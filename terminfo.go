@@ -1,4 +1,6 @@
+//go:build !windows
 // +build !windows
+
 // This file contains a simple and incomplete implementation of the terminfo
 // database. Information was taken from the ncurses manpages term(5) and
 // terminfo(5). Currently, only the string capabilities for special keys and for
@@ -15,13 +17,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 )
 
 const (
-	ti_magic         = 0432
+	ti_magic         = 0o432
 	ti_header_length = 12
 	ti_mouse_enter   = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h"
 	ti_mouse_leave   = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l"
@@ -85,14 +86,14 @@ func ti_try_path(path string) (data []byte, err error) {
 
 	// first try, the typical *nix path
 	terminfo := path + "/" + term[0:1] + "/" + term
-	data, err = ioutil.ReadFile(terminfo)
+	data, err = os.ReadFile(terminfo)
 	if err == nil {
 		return
 	}
 
 	// fallback to darwin specific dirs structure
 	terminfo = path + "/" + hex.EncodeToString([]byte(term[:1])) + "/" + term
-	data, err = ioutil.ReadFile(terminfo)
+	data, err = os.ReadFile(terminfo)
 	return
 }
 
@@ -170,7 +171,7 @@ func setup_term() (err error) {
 	table_offset = str_offset + 2*header[4]
 
 	keys = make([]string, 0xFFFF-key_min)
-	for i, _ := range keys {
+	for i := range keys {
 		keys[i], err = ti_read_string(rd, str_offset+2*ti_keys[i], table_offset)
 		if err != nil {
 			return
@@ -179,7 +180,7 @@ func setup_term() (err error) {
 	funcs = make([]string, t_max_funcs)
 	// the last two entries are reserved for mouse. because the table offset is
 	// not there, the two entries have to fill in manually
-	for i, _ := range funcs[:len(funcs)-2] {
+	for i := range funcs[:len(funcs)-2] {
 		funcs[i], err = ti_read_string(rd, str_offset+2*ti_funcs[i], table_offset)
 		if err != nil {
 			return
